@@ -1,0 +1,36 @@
+name: Check
+
+on:
+  workflow_call:
+    inputs:
+      build:
+        description: Also run the build and check that dist is up to date.
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: npm ci
+        run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Build
+        if: ${{ inputs.build }}
+        run: npm run build
+      - name: Check dist is up to date
+        if: ${{ inputs.build }}
+        run: git diff --exit-code -- dist
+      - name: Test
+        run: npm run test

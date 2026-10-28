@@ -4,25 +4,41 @@
   "license": "MIT",
   "description": "Shared tooling configuration for the pulse repositories.",
   "type": "module",
-  "private": true,
   "engines": {
     "node": ">=24"
   },
+  "files": [
+    "biome.json",
+    "tsconfig.base.json",
+    "eslint.config.js",
+    "lefthook.yml",
+    ".github/workflows/check.yml"
+  ],
+  "exports": {
+    "./biome.json": "./biome.json",
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./eslint.config.js": "./eslint.config.js",
+    "./lefthook.yml": "./lefthook.yml",
+    "./package.json": "./package.json"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "node node_modules/typescript7/bin/tsc --noEmit",
     "test": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"**/*.test.ts\" --test-coverage-exclude=\"**/test/**\" --test-coverage-exclude=\"dist/**\"",
-    "lint": "biome check . && node tools/sonarjs/node_modules/eslint/bin/eslint.js --config tools/sonarjs/eslint.config.js .",
+    "lint": "biome check . && node node_modules/eslint/bin/eslint.js --ignore-pattern \".repos/**\" .",
     "format": "biome check --write .",
     "prepare": "lefthook install || true",
     "check": "npm run lint && npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "@typescript-eslint/parser": "8.72.1",
+    "eslint": "10.13.0",
+    "eslint-plugin-sonarjs": "4.2.2",
+    "typescript": "6.0.3"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.3",
     "@types/node": "^26.6.5",
     "lefthook": "2.2.2",
-    "typescript": "^7.0.2"
-  },
-  "workspaces": [
-    "tools/sonarjs"
-  ]
+    "typescript7": "npm:typescript@^7.0.2"
+  }
 }
