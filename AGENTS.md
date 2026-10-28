@@ -97,5 +97,11 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 
 ## This repository
 
-- This repository will hold the shared tooling configuration that the other pulse repositories extend.
+- This repository holds the shared tooling configuration that the other pulse repositories extend: `biome.json`, `tsconfig.base.json`, `eslint.config.js`, `lefthook.yml`, `.github/workflows/check.yml`. Files, entries per target and the pin update procedure are in `README.md`.
 - It has no product code. `src/index.ts` is a placeholder export.
+- The shared files are exported through `package.json` (`exports`, `files`). Keep the shared ESLint config free of `.repos/`.
+- Typecheck runs with the `typescript7` alias; `typescript` 6.0.3 is a dependency for the linter only.
+
+## Shared tooling configuration
+
+The shared tooling configuration lives in `lorenzh/pulse-config`. The other pulse repositories use it through `extends` (Biome, TypeScript, Lefthook), a one-line ESLint config and `uses:` (CI). A rule change is made in `pulse-config` and reaches a target when its pin is updated. "Never weaken `biome.json`, `tsconfig.json` or CI" refers to the shared config.

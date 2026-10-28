@@ -3,7 +3,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 
 export default [
   {
-    ignores: ["**/dist/**", "**/node_modules/**", "**/public/**", "**/coverage/**", ".repos/**"],
+    ignores: ["**/dist/**", "**/node_modules/**", "**/public/**", "**/coverage/**"],
   },
   {
     ...sonarjs.configs.recommended,
