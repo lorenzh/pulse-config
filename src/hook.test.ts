@@ -1,0 +1,39 @@
+import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { after, test } from "node:test";
+import { promisify } from "node:util";
+
+const run = promisify(execFile);
+const root = join(import.meta.dirname, "..");
+const lefthook = join(root, "node_modules", ".bin", "lefthook");
+const probe = join("src", `hook-probe-${process.pid}-${Date.now()}.ts`);
+
+async function preCommit(file: string): Promise<{ code: number; output: string }> {
+  try {
+    const { stdout, stderr } = await run(
+      lefthook,
+      ["run", "pre-commit", "--file", file, "--no-tty"],
+      { cwd: root },
+    );
+    return { code: 0, output: stdout + stderr };
+  } catch (error) {
+    const { code, stdout, stderr } = error as { code?: number; stdout?: string; stderr?: string };
+    return { code: code ?? 1, output: `${stdout ?? ""}${stderr ?? ""}` };
+  }
+}
+
+after(() => rm(join(root, probe), { force: true }));
+
+test("pre-commit hook skips the invalid fixtures", async () => {
+  const result = await preCommit("test/fixtures/floating-promise/src/index.ts");
+  assert.equal(result.code, 0, result.output);
+});
+
+test("pre-commit hook reports a real error", async () => {
+  await writeFile(join(root, probe), "async function f(): Promise<void> {}\nf();\nexport { f };\n");
+  const result = await preCommit(probe);
+  assert.notEqual(result.code, 0, result.output);
+  assert.match(result.output, /no-floating-promises/);
+});
