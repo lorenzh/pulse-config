@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!**/dist", "!**/node_modules", "!**/package-lock.json", "!**/*.html"]
+    "includes": [
+      "**",
+      "!**/dist",
+      "!**/node_modules",
+      "!**/package-lock.json",
+      "!**/*.html",
+      "!**/test/fixtures"
+    ]
   },
   "formatter": {
     "enabled": true,
