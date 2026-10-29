@@ -5,4 +5,4 @@ pre-commit:
       run: npx --no-install biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
     eslint:
       glob: "*.{js,ts}"
-      run: node node_modules/@lorenzh/pulse-config/node_modules/eslint/bin/eslint.js --no-warn-ignored --no-error-on-unmatched-pattern {staged_files}
+      run: npx --no-install pulse-eslint --no-warn-ignored --no-error-on-unmatched-pattern {staged_files}

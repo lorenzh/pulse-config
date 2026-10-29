@@ -19,7 +19,7 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 | Tests whose name matches                                      | `node --test --test-name-pattern "<text>"` |
 | Typecheck                                                     | `npm run typecheck`                        |
 | Lint and format check / apply fixes                           | `npm run lint` / `npm run format`          |
-- A change is done when `npm run check` passes; the pre-commit hook runs only Biome. Never run `git commit --no-verify`, and never weaken `biome.json`, `tsconfig.json`, or CI to pass.
+- A change is done when `npm run check` passes; the pre-commit hook runs Biome and ESLint on staged files. Never run `git commit --no-verify`, and never weaken `biome.json`, `tsconfig.json`, or CI to pass.
 
 ## Repository boundaries
 
@@ -72,7 +72,7 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 - No real clock and no real timers: inject `now` and a fake `setTimeout`, and advance them in the test.
 - No external network. Start servers on `127.0.0.1` port `0` inside the test and close them in `after`.
 - Each test writes only to its own `mkdtemp` directory or an in-memory database, and cleans it up.
-- `npm test` enforces at least 80 % line coverage and `npm run lint` limits cognitive complexity to 15 per function (SonarJS); never lower either to pass.
+- `npm test` enforces at least 80 % line coverage and `npm run lint` limits cognitive complexity to 15 per function (SonarJS) and enforces `no-floating-promises`, `no-misused-promises` and `switch-exhaustiveness-check` on `.ts` files; never lower either to pass.
 
 ## End-to-end checks
 
@@ -100,6 +100,9 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 - This repository holds the shared tooling configuration that the other pulse repositories extend: `biome.json`, `tsconfig.base.json`, `eslint.config.js`, `lefthook.yml`, `.github/workflows/check.yml`. Files, entries per target and the pin update procedure are in `README.md`.
 - It has no product code. `src/index.ts` is a placeholder export.
 - The shared files are exported through `package.json` (`exports`, `files`). Keep the shared ESLint config free of `.repos/`.
+- `tsconfig.base.json` sets `noUncheckedIndexedAccess`, `noImplicitReturns` and `exactOptionalPropertyTypes`. A target whose fixes for `exactOptionalPropertyTypes` exceed about 20 errors, or would change a public contract type, may set `"exactOptionalPropertyTypes": false` in its own `tsconfig.json` with a comment, and the pull request gives the error count.
+- ESLint runs through the `pulse-eslint` bin (`bin/pulse-eslint.js`). Targets and hooks call it; no file references `node_modules/@lorenzh/pulse-config/node_modules`.
+- `test/fixtures/**` holds small projects that the test lints and typechecks. They are excluded from Biome, ESLint, `tsc` and coverage.
 - Typecheck runs with the `typescript7` alias; `typescript` 6.0.3 is a dependency for the linter only.
 
 ## Shared tooling configuration

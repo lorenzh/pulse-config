@@ -7,7 +7,11 @@
   "engines": {
     "node": ">=24"
   },
+  "bin": {
+    "pulse-eslint": "./bin/pulse-eslint.js"
+  },
   "files": [
+    "bin/pulse-eslint.js",
     "biome.json",
     "tsconfig.base.json",
     "eslint.config.js",
@@ -23,13 +27,14 @@
   },
   "scripts": {
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit",
-    "test": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"**/*.test.ts\" --test-coverage-exclude=\"**/test/**\" --test-coverage-exclude=\"dist/**\"",
-    "lint": "biome check . && node node_modules/eslint/bin/eslint.js --ignore-pattern \".repos/**\" .",
+    "test": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"**/*.test.ts\" --test-coverage-exclude=\"**/test/**\" --test-coverage-exclude=\"dist/**\" \"src/**/*.test.ts\"",
+    "lint": "biome check . && node bin/pulse-eslint.js --ignore-pattern \".repos/**\" --ignore-pattern \"test/fixtures/**\" .",
     "format": "biome check --write .",
     "prepare": "lefthook install || true",
     "check": "npm run lint && npm run typecheck && npm run test"
   },
   "dependencies": {
+    "@typescript-eslint/eslint-plugin": "8.72.1",
     "@typescript-eslint/parser": "8.72.1",
     "eslint": "10.13.0",
     "eslint-plugin-sonarjs": "4.2.2",
