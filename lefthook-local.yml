@@ -1,4 +1,5 @@
 pre-commit:
   commands:
     eslint:
-      run: node bin/pulse-eslint.js --no-warn-ignored --no-error-on-unmatched-pattern {staged_files}
+      glob: "*.{js,ts}"
+      run: node bin/pulse-eslint.js --config eslint.local.config.js --no-warn-ignored --no-error-on-unmatched-pattern {staged_files}

@@ -28,7 +28,7 @@
   "scripts": {
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit",
     "test": "node --test --experimental-test-coverage --test-coverage-lines=80 --test-coverage-exclude=\"**/*.test.ts\" --test-coverage-exclude=\"**/test/**\" --test-coverage-exclude=\"dist/**\" \"src/**/*.test.ts\"",
-    "lint": "biome check . && node bin/pulse-eslint.js --ignore-pattern \".repos/**\" --ignore-pattern \"test/fixtures/**\" .",
+    "lint": "biome check . && node bin/pulse-eslint.js --config eslint.local.config.js .",
     "format": "biome check --write .",
     "prepare": "lefthook install || true",
     "check": "npm run lint && npm run typecheck && npm run test"

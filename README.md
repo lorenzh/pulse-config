@@ -29,6 +29,8 @@ The shared ESLint config does not ignore `.repos/`. If ESLint reaches a `.repos/
 
 The shared ESLint config adds type-aware rules for `.ts` files (`no-floating-promises`, `no-misused-promises`, `switch-exhaustiveness-check`) through `projectService` rooted at the working directory. Every linted `.ts` file must be in a `tsconfig.json` `include`. Type information comes from the bundled TypeScript 6, which accepts all options of `tsconfig.base.json`; `tsc` is TypeScript 7. The base also sets `noUncheckedIndexedAccess`, `noImplicitReturns` and `exactOptionalPropertyTypes`; see `AGENTS.md` for the opt-out of the last one.
 
+`eslint.local.config.js` holds this repository's own ESLint ignores (`test/fixtures/**`, `.repos/**`). `npm run lint` and the pre-commit hook use it. It is not in `package.json` `files` or `exports`, so it is not shipped. To check the hook: `node_modules/.bin/lefthook run pre-commit --file test/fixtures/floating-promise/src/index.ts --no-tty` exits 0, and the same command on a file with an un-awaited promise fails with `no-floating-promises`.
+
 In this repository TypeScript 7 is installed as `typescript7` (an npm alias), because the `typescript` dependency is 6.0.3. `npm run typecheck` uses `typescript7`, so `npx tsc -v` here prints 6.0.3. `lefthook-local.yml` points the ESLint hook at the local binary.
 
 ## Updating the pin

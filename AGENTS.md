@@ -102,6 +102,7 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 - The shared files are exported through `package.json` (`exports`, `files`). Keep the shared ESLint config free of `.repos/`.
 - `tsconfig.base.json` sets `noUncheckedIndexedAccess`, `noImplicitReturns` and `exactOptionalPropertyTypes`. A target whose fixes for `exactOptionalPropertyTypes` exceed about 20 errors, or would change a public contract type, may set `"exactOptionalPropertyTypes": false` in its own `tsconfig.json` with a comment, and the pull request gives the error count.
 - ESLint runs through the `pulse-eslint` bin (`bin/pulse-eslint.js`). Targets and hooks call it; no file references `node_modules/@lorenzh/pulse-config/node_modules`.
+- `eslint.local.config.js` holds this repository's own ESLint ignores (`test/fixtures/**`, `.repos/**`). `npm run lint` and the pre-commit hook (`lefthook-local.yml`) use it. It is not shipped. Prove the hook with `node_modules/.bin/lefthook run pre-commit --file <path> --no-tty` (`src/hook.test.ts` does).
 - `test/fixtures/**` holds small projects that the test lints and typechecks. They are excluded from Biome, ESLint, `tsc` and coverage.
 - Typecheck runs with the `typescript7` alias; `typescript` 6.0.3 is a dependency for the linter only.
 
