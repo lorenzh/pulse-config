@@ -7,14 +7,15 @@ import { promisify } from "node:util";
 
 const run = promisify(execFile);
 const root = join(import.meta.dirname, "..");
-const lefthook = join(root, "node_modules", ".bin", "lefthook");
+// The launcher script has a `#!/usr/bin/env node` shebang; run it with the current runtime instead.
+const lefthook = join(root, "node_modules", "lefthook", "bin", "index.js");
 const probe = join("src", `hook-probe-${process.pid}-${Date.now()}.ts`);
 
 async function preCommit(file: string): Promise<{ code: number; output: string }> {
   try {
     const { stdout, stderr } = await run(
-      lefthook,
-      ["run", "pre-commit", "--file", file, "--no-tty"],
+      process.execPath,
+      [lefthook, "run", "pre-commit", "--file", file, "--no-tty"],
       { cwd: root },
     );
     return { code: 0, output: stdout + stderr };
