@@ -2,4 +2,4 @@ pre-commit:
   commands:
     eslint:
       glob: "*.{js,ts}"
-      run: node bin/pulse-eslint.js --config eslint.local.config.js --no-warn-ignored --no-error-on-unmatched-pattern {staged_files}
+      run: bun bin/pulse-eslint.js --config eslint.local.config.js --no-warn-ignored --no-error-on-unmatched-pattern {staged_files}

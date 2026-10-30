@@ -27,18 +27,18 @@ export default [
       "@typescript-eslint/no-floating-promises": [
         "error",
         {
-          // node:test registers and awaits these itself.
+          // bun:test registers and awaits these itself.
           allowForKnownSafeCalls: [
             {
               from: "package",
-              package: "node:test",
+              package: "bun:test",
               name: [
                 "test",
                 "it",
                 "describe",
                 "suite",
-                "before",
-                "after",
+                "beforeAll",
+                "afterAll",
                 "beforeEach",
                 "afterEach",
               ],
