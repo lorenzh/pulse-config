@@ -13,6 +13,8 @@ const fixtures = join(root, "test", "fixtures");
 const bin = join(root, "bin", "pulse-eslint.js");
 const tsc = join(root, "node_modules", "typescript7", "bin", "tsc");
 const sharedConfig = join(root, "eslint.config.js");
+// Type-aware ESLint loads the TypeScript program, which is slow on a cold CI runner.
+const lintTimeoutMs = 30_000;
 
 interface Outcome {
   isOk: boolean;
@@ -105,18 +107,26 @@ describe("pulse-eslint from a consumer layout", () => {
     return dir;
   }
 
-  test("uses the shared config and its own ESLint", async () => {
-    const dir = await consumer("floating-promise");
-    const entry = join(dir, "node_modules", "@lorenzh", "pulse-config", "bin", "pulse-eslint.js");
-    const outcome = await exec(entry, ["."], dir);
-    assert.equal(outcome.isOk, false);
-    assert.match(outcome.output, /no-floating-promises/);
-  });
+  test(
+    "uses the shared config and its own ESLint",
+    async () => {
+      const dir = await consumer("floating-promise");
+      const entry = join(dir, "node_modules", "@lorenzh", "pulse-config", "bin", "pulse-eslint.js");
+      const outcome = await exec(entry, ["."], dir);
+      assert.equal(outcome.isOk, false);
+      assert.match(outcome.output, /no-floating-promises/);
+    },
+    lintTimeoutMs,
+  );
 
-  test("passes a clean project", async () => {
-    const dir = await consumer("clean");
-    const entry = join(dir, "node_modules", "@lorenzh", "pulse-config", "bin", "pulse-eslint.js");
-    const outcome = await exec(entry, ["."], dir);
-    assert.equal(outcome.isOk, true, outcome.output);
-  });
+  test(
+    "passes a clean project",
+    async () => {
+      const dir = await consumer("clean");
+      const entry = join(dir, "node_modules", "@lorenzh", "pulse-config", "bin", "pulse-eslint.js");
+      const outcome = await exec(entry, ["."], dir);
+      assert.equal(outcome.isOk, true, outcome.output);
+    },
+    lintTimeoutMs,
+  );
 });
