@@ -6,20 +6,20 @@ Instructions for coding agents in this repository. They bind every change.
 
 pulse is an uptime monitor with a status page, split over several repositories. Work arrives as an
 issue with an approved spec from the meta repository; implement only the section for this
-repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`tsc --noEmit`),
-`node:test`, Biome, Lefthook.
+repository. Bun 1.4.0 (runtime, package manager, test runner), ESM, strict TypeScript (`tsc --noEmit`),
+`bun:test`, Biome, Lefthook.
 
 ## Commands
 
-| Task                                                          | Command                                    |
-| ------------------------------------------------------------- | ------------------------------------------ |
-| Install from the lockfile (also installs the pre-commit hook) | `npm ci`                                   |
-| All checks: CI runs the same steps                            | `npm run check`                            |
-| One test file                                                 | `node --test src/<name>.test.ts`           |
-| Tests whose name matches                                      | `node --test --test-name-pattern "<text>"` |
-| Typecheck                                                     | `npm run typecheck`                        |
-| Lint and format check / apply fixes                           | `npm run lint` / `npm run format`          |
-- A change is done when `npm run check` passes; the pre-commit hook runs Biome and ESLint on staged files. Never run `git commit --no-verify`, and never weaken `biome.json`, `tsconfig.json`, or CI to pass.
+| Task                                                          | Command                                 |
+| ------------------------------------------------------------- | --------------------------------------- |
+| Install from the lockfile (also installs the pre-commit hook) | `bun install --frozen-lockfile`         |
+| All checks: CI runs the same steps                            | `bun run check`                         |
+| One test file                                                 | `bun test src/<name>.test.ts`           |
+| Tests whose name matches                                      | `bun test --test-name-pattern "<text>"` |
+| Typecheck                                                     | `bun run typecheck`                     |
+| Lint and format check / apply fixes                           | `bun run lint` / `bun run format`       |
+- A change is done when `bun run check` passes; the pre-commit hook runs Biome and ESLint on staged files. Never run `git commit --no-verify`, and never weaken `biome.json`, `tsconfig.json`, or CI to pass.
 
 ## Repository boundaries
 
@@ -34,7 +34,7 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 
 ## TypeScript
 
-- The source runs unbuilt under Node type stripping: erasable syntax only (no `enum`, `namespace`, parameter properties). Use string-literal unions or `as const` objects.
+- The source runs unbuilt under Bun: erasable syntax only (no `enum`, `namespace`, parameter properties). Use string-literal unions or `as const` objects.
 - Relative imports carry the `.ts` extension. Built-ins use the `node:` prefix.
 - Type-only imports use `import type`; mixed imports mark types inline: `import { type X, y }`.
 - No `any`, also not in tests. Use `unknown` and narrow it, or the contract type.
@@ -73,13 +73,13 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 - No real clock and no real timers: inject `now` and a fake `setTimeout`, and advance them in the test.
 - No external network. Start servers on `127.0.0.1` port `0` inside the test and close them in `after`.
 - Each test writes only to its own `mkdtemp` directory or an in-memory database, and cleans it up.
-- `npm test` enforces at least 80 % line coverage and `npm run lint` limits cognitive complexity to 15 per function (SonarJS) and enforces `no-floating-promises`, `no-misused-promises` and `switch-exhaustiveness-check` on `.ts` files; never lower either to pass.
+- `bun test` enforces at least 80 % line coverage and `bun run lint` limits cognitive complexity to 15 per function (SonarJS) and enforces `no-floating-promises`, `no-misused-promises` and `switch-exhaustiveness-check` on `.ts` files; never lower either to pass.
 
 ## End-to-end checks
 
 - Each service has at least one test that starts its real server on port `0` and drives it over HTTP, with fake peers for other services.
 - A change to an endpoint or a response shape gets such a test, with the response typed by the contract.
-- Before handoff of a user-visible change, start the service with `npm start` and exercise the changed behavior once; report the command and result.
+- Before handoff of a user-visible change, start the service with `bun start` and exercise the changed behavior once; report the command and result.
 
 ## Documentation
 
@@ -103,7 +103,7 @@ repository. Node 24+ with native type stripping, ESM, npm, strict TypeScript (`t
 - The shared files are exported through `package.json` (`exports`, `files`). Keep the shared ESLint config free of `.repos/`.
 - `tsconfig.base.json` sets `noUncheckedIndexedAccess`, `noImplicitReturns` and `exactOptionalPropertyTypes`. A target whose fixes for `exactOptionalPropertyTypes` exceed about 20 errors, or would change a public contract type, may set `"exactOptionalPropertyTypes": false` in its own `tsconfig.json` with a comment, and the pull request gives the error count.
 - ESLint runs through the `pulse-eslint` bin (`bin/pulse-eslint.js`). Targets and hooks call it; no file references `node_modules/@lorenzh/pulse-config/node_modules`.
-- `eslint.local.config.js` holds this repository's own ESLint ignores (`test/fixtures/**`, `.repos/**`). `npm run lint` and the pre-commit hook (`lefthook-local.yml`) use it. It is not shipped. Prove the hook with `node_modules/.bin/lefthook run pre-commit --file <path> --no-tty` (`src/hook.test.ts` does).
+- `eslint.local.config.js` holds this repository's own ESLint ignores (`test/fixtures/**`, `.repos/**`). `bun run lint` and the pre-commit hook (`lefthook-local.yml`) use it. It is not shipped. Prove the hook with `node_modules/.bin/lefthook run pre-commit --file <path> --no-tty` (`src/hook.test.ts` does).
 - `test/fixtures/**` holds small projects that the test lints and typechecks. They are excluded from Biome, ESLint, `tsc` and coverage.
 - Typecheck runs with the `typescript7` alias; `typescript` 6.0.3 is a dependency for the linter only.
 

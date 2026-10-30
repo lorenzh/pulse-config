@@ -1,8 +1,8 @@
+import { afterAll, test } from "bun:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { after, test } from "node:test";
 import { promisify } from "node:util";
 
 const run = promisify(execFile);
@@ -24,7 +24,7 @@ async function preCommit(file: string): Promise<{ code: number; output: string }
   }
 }
 
-after(() => rm(join(root, probe), { force: true }));
+afterAll(() => rm(join(root, probe), { force: true }));
 
 test("pre-commit hook skips the invalid fixtures", async () => {
   const result = await preCommit("test/fixtures/floating-promise/src/index.ts");

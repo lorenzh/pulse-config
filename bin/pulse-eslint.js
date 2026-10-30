@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+#!/usr/bin/env bun
 // Runs the ESLint that ships with pulse-config, whatever the layout of node_modules.
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";

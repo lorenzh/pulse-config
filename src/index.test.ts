@@ -1,9 +1,9 @@
+import { afterAll, describe, test } from "bun:test";
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { cp, mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { after, describe, test } from "node:test";
 import { promisify } from "node:util";
 import { name } from "./index.ts";
 
@@ -83,7 +83,7 @@ describe("compiler flags", () => {
 
 describe("pulse-eslint from a consumer layout", () => {
   const dirs: string[] = [];
-  after(async () => {
+  afterAll(async () => {
     await Promise.all(dirs.map((dir) => rm(dir, { recursive: true, force: true })));
   });
 
