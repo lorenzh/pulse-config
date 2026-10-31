@@ -98,7 +98,7 @@ repository. Bun 1.4.0 (runtime, package manager, test runner), ESM, strict TypeS
 
 ## This repository
 
-- This repository holds the shared tooling configuration that the other pulse repositories extend: `biome.json`, `tsconfig.base.json`, `eslint.config.js`, `lefthook.yml`, `.github/workflows/check.yml`. Files, entries per target and the pin update procedure are in `README.md`.
+- This repository holds the shared tooling configuration that the other pulse repositories extend: `biome.json`, `tsconfig.base.json`, `eslint.config.js`, `lefthook.yml`, `.github/workflows/check.yml`, `.github/workflows/release.yml`. Files, entries per target and the pin update procedure are in `README.md`.
 - It has no product code. `src/index.ts` is a placeholder export.
 - The shared files are exported through `package.json` (`exports`, `files`). Keep the shared ESLint config free of `.repos/`.
 - `tsconfig.base.json` sets `noUncheckedIndexedAccess`, `noImplicitReturns` and `exactOptionalPropertyTypes`. A target whose fixes for `exactOptionalPropertyTypes` exceed about 20 errors, or would change a public contract type, may set `"exactOptionalPropertyTypes": false` in its own `tsconfig.json` with a comment, and the pull request gives the error count.
