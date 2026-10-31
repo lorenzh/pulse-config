@@ -19,6 +19,8 @@ The shared tooling configuration lives in `lorenzh/pulse-config`. The other puls
 | `biome.json`                    | `"extends": ["@lorenzh/pulse-config/biome.json"]` (fallback: `./node_modules/@lorenzh/pulse-config/biome.json`)                |
 | `tsconfig.base.json`            | `"extends": "@lorenzh/pulse-config/tsconfig.base.json"`; the target sets its own `include`                                     |
 | `bin/pulse-eslint.js`           | `pulse-eslint` bin: runs the ESLint of this package                                                                            |
+| `bin/pulse-workflows.js`        | `pulse-workflows` bin: checks the target's workflows; see [pulse-workflows](#pulse-workflows)                                  |
+| `actions-policy.json`           | Approved actions for `pulse-workflows`; read by the bin, not by the target                                                     |
 | `eslint.config.js`              | `import base from "@lorenzh/pulse-config/eslint.config.js"; export default [...base];`                                         |
 | `lefthook.yml`                  | `extends` the file in `node_modules/@lorenzh/pulse-config`                                                                     |
 | `.github/workflows/check.yml`   | `uses: lorenzh/pulse-config/.github/workflows/check.yml@<sha>`; input `build: true` adds Build and the dist check              |
@@ -105,13 +107,38 @@ gh attestation verify oci://ghcr.io/lorenzh/pulse-<service>:X.Y.Z --owner lorenz
 - Visibility: a new package under the user account starts private. Make it public once in the package settings on GitHub. There is no REST endpoint for this.
 - Cleanup: delete a test tag with `git push origin :refs/tags/<tag>`, and its package version (with its untagged platform digests) with `gh api -X DELETE /user/packages/container/pulse-<service>/versions/<id>`.
 
+## pulse-workflows
+
+`pulse-workflows` checks the GitHub Actions workflows of the repository in the working directory. A target runs it in its `lint` script:
+
+```json
+"lint": "biome check . && pulse-eslint . && pulse-workflows"
+```
+
+It reads every top-level `.github/workflows/*.yml` and `*.yaml` file and the root `package.json`. It prints `pulse-workflows: ok (<n> files, <m> uses)` and exits `0`, or prints one line per violation to stderr (`<file>: jobs.<job>[.steps[<i>]]: <rule>`) and exits `1`. A line may name the `uses` value, never `with`, `env`, `run` or `secrets` values.
+
+Rules:
+
+1. Every file parses as YAML, its root is a map with a non-empty `jobs` map, each job is a map, and `steps` is a list of maps.
+2. A step `uses` is `<owner>/<repo>@<sha>` with a 40 lower-case hex SHA. Tags, branches, short SHAs, sub-path actions, local actions, `docker://` and expressions fail.
+3. `<owner>/<repo>` is in the policy, with exactly its SHA.
+4. An action with `only` is allowed only for the listed `package.json` `name` and workflow file name.
+5. Every `actions/checkout` step has `with: { persist-credentials: false }` (the boolean, on that step).
+6. A job-level `uses` is `./.github/workflows/<file>` of a checked file, or `lorenzh/pulse-config/.github/workflows/check.yml@<sha>` or `release.yml@<sha>` where `<sha>` equals the `github:lorenzh/pulse-config#<sha>` pin of `package.json`.
+7. A job with `container` or `services` fails: the policy does not cover their images.
+8. A job without steps and without `uses` fails.
+
+The policy `actions-policy.json` ships next to the bin; the bin never reads a policy from the checked repository. It is a snapshot of the target rows of "Runtime and CI" in `docs/approved-packages.md` of pulse-meta, and its `source` names that commit. A malformed policy makes the bin exit `1` with `actions-policy.json: <reason>`.
+
+To approve a new action or pin: first a pulse-meta PR changes `docs/approved-packages.md`, then a pulse-config PR changes `actions-policy.json`, then the targets update their pin.
+
 ## Updating the pin
 
 1. Merge the change to `main` of `pulse-config`.
 2. In each target, set the new SHA in `package.json` (`github:lorenzh/pulse-config#<sha>`) and refresh `bun.lock` (`bun install`).
 3. Set the same SHA in both `uses:` refs of the target's `.github/workflows/ci.yml`: `check.yml` and `release.yml`.
 
-The pins change together. No check asserts that they match (`job.workflow_sha` is not checked), so this is a manual rule.
+The pins change together. `pulse-workflows` fails when a `uses:` ref differs from the `package.json` pin.
 
 ## Development
 

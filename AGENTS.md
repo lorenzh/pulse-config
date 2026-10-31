@@ -102,6 +102,7 @@ repository. Bun 1.4.0 (runtime, package manager, test runner), ESM, strict TypeS
 - It has no product code. `src/index.ts` is a placeholder export.
 - The shared files are exported through `package.json` (`exports`, `files`). Keep the shared ESLint config free of `.repos/`.
 - `tsconfig.base.json` sets `noUncheckedIndexedAccess`, `noImplicitReturns` and `exactOptionalPropertyTypes`. A target whose fixes for `exactOptionalPropertyTypes` exceed about 20 errors, or would change a public contract type, may set `"exactOptionalPropertyTypes": false` in its own `tsconfig.json` with a comment, and the pull request gives the error count.
+- `bin/pulse-workflows.js` and `actions-policy.json` are shared files too: the `pulse-workflows` bin checks a target's workflows against the policy. `actions-policy.json` changes only together with `docs/approved-packages.md` in pulse-meta (meta PR first).
 - ESLint runs through the `pulse-eslint` bin (`bin/pulse-eslint.js`). Targets and hooks call it; no file references `node_modules/@lorenzh/pulse-config/node_modules`.
 - `eslint.local.config.js` holds this repository's own ESLint ignores (`test/fixtures/**`, `.repos/**`). `bun run lint` and the pre-commit hook (`lefthook-local.yml`) use it. It is not shipped. Prove the hook with `node_modules/.bin/lefthook run pre-commit --file <path> --no-tty` (`src/hook.test.ts` does).
 - `test/fixtures/**` holds small projects that the test lints and typechecks. They are excluded from Biome, ESLint, `tsc` and coverage.
