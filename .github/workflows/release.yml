@@ -1,0 +1,296 @@
+name: Release
+
+# Reusable workflow: a service's ci.yml calls it on a vX.Y.Z tag after its gate jobs.
+# It publishes ghcr.io/<repository> for linux/amd64 and linux/arm64 with an attestation.
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      image: ${{ steps.version.outputs.image }}
+      version: ${{ steps.version.outputs.version }}
+      tags: ${{ steps.version.outputs.tags }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # The publish job runs the same script again; src/release.test.ts checks that both match.
+      - name: Check the tag and compute the image tags
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          core='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          release_re="^v${core}(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?\$"
+          stable_re="^v${core}\$"
+          if [[ ! "$TAG" =~ $release_re ]]; then
+            echo "::error::Tag '$TAG' is not a release tag. Expected vX.Y.Z or vX.Y.Z-<pre-release>, for example v1.2.3 or v1.2.3-rc.1." >&2
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          if [[ "$REPOSITORY" =~ [A-Z] ]]; then
+            echo "::error::Repository '$REPOSITORY' has upper-case letters; an image name must be lower case." >&2
+            exit 1
+          fi
+          version="${TAG#v}"
+          image="ghcr.io/${REPOSITORY}"
+          tags="$version"
+          prerelease=true
+          if [[ "$TAG" =~ $stable_re ]]; then
+            prerelease=false
+            if ! git merge-base --is-ancestor "$SHA" refs/remotes/origin/main; then
+              echo "::error::Stable tag '$TAG' must point to a commit on main." >&2
+              exit 1
+            fi
+            # Pre-release tags never count; sort -V compares each component as a number.
+            stable_tags="$({ git tag --list 'v*'; printf '%s\n' "$TAG"; } | grep -E "$stable_re" | sort -uV)"
+            highest_minor="$(grep -E "^v${major}\.${minor}\." <<< "$stable_tags" | tail -n 1)"
+            highest_major="$(grep -E "^v${major}\." <<< "$stable_tags" | tail -n 1)"
+            if [[ "$highest_minor" == "$TAG" ]]; then
+              tags="$tags $major.$minor"
+            fi
+            if [[ "$highest_major" == "$TAG" ]]; then
+              tags="$tags $major"
+            fi
+          fi
+          {
+            echo "image=$image"
+            echo "version=$version"
+            echo "tags=$tags"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Image $image, tags: $tags"
+
+  build-amd64:
+    needs: version
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Log in to ghcr.io
+        env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - name: Create the BuildKit builder
+        run: docker buildx create --name pulse-release --use --driver docker-container --driver-opt image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+      - name: Build and push linux/amd64 by digest
+        id: build
+        env:
+          PLATFORM: linux/amd64
+          IMAGE: ${{ needs.version.outputs.image }}
+          VERSION: ${{ needs.version.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          meta="$RUNNER_TEMP/meta.json"
+          docker buildx build --builder pulse-release --platform "$PLATFORM" \
+            --provenance=false --sbom=false \
+            --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" \
+            --label "org.opencontainers.image.revision=$SHA" \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --label "org.opencontainers.image.licenses=MIT" \
+            --label "org.opencontainers.image.title=${REPOSITORY#*/}" \
+            --output "type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file "$meta" .
+          digest="$(jq -r '."containerimage.digest"' "$meta")"
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::The build metadata has no valid image digest." >&2
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  build-arm64:
+    needs: version
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Log in to ghcr.io
+        env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - name: Create the BuildKit builder
+        run: docker buildx create --name pulse-release --use --driver docker-container --driver-opt image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+      - name: Build and push linux/arm64 by digest
+        id: build
+        env:
+          PLATFORM: linux/arm64
+          IMAGE: ${{ needs.version.outputs.image }}
+          VERSION: ${{ needs.version.outputs.version }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          meta="$RUNNER_TEMP/meta.json"
+          docker buildx build --builder pulse-release --platform "$PLATFORM" \
+            --provenance=false --sbom=false \
+            --label "org.opencontainers.image.source=https://github.com/$REPOSITORY" \
+            --label "org.opencontainers.image.revision=$SHA" \
+            --label "org.opencontainers.image.version=$VERSION" \
+            --label "org.opencontainers.image.licenses=MIT" \
+            --label "org.opencontainers.image.title=${REPOSITORY#*/}" \
+            --output "type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true" \
+            --metadata-file "$meta" .
+          digest="$(jq -r '."containerimage.digest"' "$meta")"
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::The build metadata has no valid image digest." >&2
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+
+  publish:
+    needs: [version, build-amd64, build-arm64]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    # One image per repository: releases of the same image publish one after another.
+    concurrency:
+      group: release-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      # Recompute the tags here, so that X.Y and X see every tag that exists now and never move back.
+      - name: Recompute the image tags
+        id: version
+        env:
+          TAG: ${{ github.ref_name }}
+          SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          core='(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)'
+          release_re="^v${core}(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?\$"
+          stable_re="^v${core}\$"
+          if [[ ! "$TAG" =~ $release_re ]]; then
+            echo "::error::Tag '$TAG' is not a release tag. Expected vX.Y.Z or vX.Y.Z-<pre-release>, for example v1.2.3 or v1.2.3-rc.1." >&2
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          if [[ "$REPOSITORY" =~ [A-Z] ]]; then
+            echo "::error::Repository '$REPOSITORY' has upper-case letters; an image name must be lower case." >&2
+            exit 1
+          fi
+          version="${TAG#v}"
+          image="ghcr.io/${REPOSITORY}"
+          tags="$version"
+          prerelease=true
+          if [[ "$TAG" =~ $stable_re ]]; then
+            prerelease=false
+            if ! git merge-base --is-ancestor "$SHA" refs/remotes/origin/main; then
+              echo "::error::Stable tag '$TAG' must point to a commit on main." >&2
+              exit 1
+            fi
+            # Pre-release tags never count; sort -V compares each component as a number.
+            stable_tags="$({ git tag --list 'v*'; printf '%s\n' "$TAG"; } | grep -E "$stable_re" | sort -uV)"
+            highest_minor="$(grep -E "^v${major}\.${minor}\." <<< "$stable_tags" | tail -n 1)"
+            highest_major="$(grep -E "^v${major}\." <<< "$stable_tags" | tail -n 1)"
+            if [[ "$highest_minor" == "$TAG" ]]; then
+              tags="$tags $major.$minor"
+            fi
+            if [[ "$highest_major" == "$TAG" ]]; then
+              tags="$tags $major"
+            fi
+          fi
+          {
+            echo "image=$image"
+            echo "version=$version"
+            echo "tags=$tags"
+            echo "prerelease=$prerelease"
+          } >> "$GITHUB_OUTPUT"
+          echo "Image $image, tags: $tags"
+      - name: Log in to ghcr.io
+        env:
+          TOKEN: ${{ github.token }}
+          ACTOR: ${{ github.actor }}
+        run: printf '%s' "$TOKEN" | docker login ghcr.io -u "$ACTOR" --password-stdin
+      - name: Show the buildx version
+        run: docker buildx version
+      - name: Refuse a re-publish
+        env:
+          IMAGE: ${{ steps.version.outputs.image }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if docker buildx imagetools inspect "$IMAGE:$VERSION" > /dev/null 2>&1; then
+            echo "::error::version already published: $IMAGE:$VERSION. A release is never overwritten." >&2
+            exit 1
+          fi
+      - name: Create the multi-arch index
+        id: index
+        env:
+          IMAGE: ${{ steps.version.outputs.image }}
+          VERSION: ${{ steps.version.outputs.version }}
+          TAGS: ${{ steps.version.outputs.tags }}
+          REPOSITORY: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          AMD64_DIGEST: ${{ needs.build-amd64.outputs.digest }}
+          ARM64_DIGEST: ${{ needs.build-arm64.outputs.digest }}
+        run: |
+          set -euo pipefail
+          digest_re='^sha256:[0-9a-f]{64}$'
+          for platform_digest in "$AMD64_DIGEST" "$ARM64_DIGEST"; do
+            if [[ ! "$platform_digest" =~ $digest_re ]]; then
+              echo "::error::A build job returned no valid image digest." >&2
+              exit 1
+            fi
+          done
+          read -ra tag_list <<< "$TAGS"
+          tag_args=()
+          for tag in "${tag_list[@]}"; do
+            tag_args+=(-t "$IMAGE:$tag")
+          done
+          docker buildx imagetools create "${tag_args[@]}" \
+            --annotation "index:org.opencontainers.image.source=https://github.com/$REPOSITORY" \
+            --annotation "index:org.opencontainers.image.revision=$SHA" \
+            --annotation "index:org.opencontainers.image.version=$VERSION" \
+            --annotation "index:org.opencontainers.image.licenses=MIT" \
+            "$IMAGE@$AMD64_DIGEST" "$IMAGE@$ARM64_DIGEST"
+          digest="$(docker buildx imagetools inspect "$IMAGE:$VERSION" --format '{{json .Manifest}}' | jq -r .digest)"
+          if [[ ! "$digest" =~ $digest_re ]]; then
+            echo "::error::The image index has no valid digest." >&2
+            exit 1
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-name: ${{ steps.version.outputs.image }}
+          subject-digest: ${{ steps.index.outputs.digest }}
+          push-to-registry: true
+          create-storage-record: false

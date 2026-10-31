@@ -17,7 +17,8 @@
     "tsconfig.base.json",
     "eslint.config.js",
     "lefthook.yml",
-    ".github/workflows/check.yml"
+    ".github/workflows/check.yml",
+    ".github/workflows/release.yml"
   ],
   "exports": {
     "./biome.json": "./biome.json",
