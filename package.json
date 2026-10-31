@@ -9,10 +9,14 @@
     "bun": "1.4.0"
   },
   "bin": {
-    "pulse-eslint": "./bin/pulse-eslint.js"
+    "pulse-eslint": "./bin/pulse-eslint.js",
+    "pulse-workflows": "./bin/pulse-workflows.js"
   },
   "files": [
     "bin/pulse-eslint.js",
+    "bin/pulse-workflows.js",
+    "src/workflow-policy.ts",
+    "actions-policy.json",
     "biome.json",
     "tsconfig.base.json",
     "eslint.config.js",
@@ -30,7 +34,7 @@
   "scripts": {
     "typecheck": "bun node_modules/typescript7/bin/tsc --noEmit",
     "test": "bun test src",
-    "lint": "biome check . && bun bin/pulse-eslint.js --config eslint.local.config.js .",
+    "lint": "biome check . && bun bin/pulse-eslint.js --config eslint.local.config.js . && bun bin/pulse-workflows.js",
     "format": "biome check --write .",
     "prepare": "lefthook install || true",
     "check": "bun run lint && bun run typecheck && bun run test"

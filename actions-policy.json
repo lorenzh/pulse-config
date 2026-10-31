@@ -1,0 +1,27 @@
+{
+  "source": "lorenzh/pulse-meta docs/approved-packages.md at 74900c557a154d2a6ad6d3b53f5153876b85e70a",
+  "actions": [
+    {
+      "uses": "actions/checkout",
+      "sha": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "version": "v7.0.1"
+    },
+    {
+      "uses": "oven-sh/setup-bun",
+      "sha": "0c5077e51419868618aeaa5fe8019c62421857d6",
+      "version": "v2.2.0"
+    },
+    {
+      "uses": "actions/attest",
+      "sha": "1e69f48acb82d1966a394da916b4c1698aa569d6",
+      "version": "v4.2.2",
+      "only": [{ "package": "@lorenzh/pulse-config", "workflow": "release.yml" }]
+    },
+    {
+      "uses": "actions/upload-artifact",
+      "sha": "cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "version": "v7.0.2",
+      "only": [{ "package": "@lorenzh/pulse-api", "workflow": "bench.yml" }]
+    }
+  ]
+}
