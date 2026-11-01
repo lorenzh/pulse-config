@@ -9,14 +9,22 @@ const run = promisify(execFile);
 const root = join(import.meta.dirname, "..");
 // The launcher script has a `#!/usr/bin/env node` shebang; run it with the current runtime instead.
 const lefthook = join(root, "node_modules", "lefthook", "bin", "index.js");
+// The caller (the Factory runner) may set LEFTHOOK=0, which would skip the hook under test.
+const callerSettings = ["LEFTHOOK", "LEFTHOOK_EXCLUDE", "LEFTHOOK_QUIET"];
 const probe = join("src", `hook-probe-${process.pid}-${Date.now()}.ts`);
 
-async function preCommit(file: string): Promise<{ code: number; output: string }> {
+async function preCommit(
+  file: string,
+  base: NodeJS.ProcessEnv = process.env,
+): Promise<{ code: number; output: string }> {
+  const env = Object.fromEntries(
+    Object.entries(base).filter(([key]) => !callerSettings.includes(key)),
+  );
   try {
     const { stdout, stderr } = await run(
       process.execPath,
       [lefthook, "run", "pre-commit", "--file", file, "--no-tty"],
-      { cwd: root },
+      { cwd: root, env },
     );
     return { code: 0, output: stdout + stderr };
   } catch (error) {
@@ -34,7 +42,12 @@ test("pre-commit hook skips the invalid fixtures", async () => {
 
 test("pre-commit hook reports a real error", async () => {
   await writeFile(join(root, probe), "async function f(): Promise<void> {}\nf();\nexport { f };\n");
-  const result = await preCommit(probe);
+  const result = await preCommit(probe, {
+    ...process.env,
+    LEFTHOOK: "0",
+    LEFTHOOK_EXCLUDE: "biome,eslint",
+    LEFTHOOK_QUIET: "meta,summary,success,failure,skips,execution,execution_out,execution_info",
+  });
   assert.notEqual(result.code, 0, result.output);
   assert.match(result.output, /no-floating-promises/);
 });
