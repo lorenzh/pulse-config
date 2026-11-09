@@ -48,11 +48,15 @@ repository. Bun 1.4.0 (runtime, package manager, test runner), ESM, strict TypeS
 - One module, one responsibility. Name the module after its job (`scheduler.ts`, `uptime.ts`).
 - Split a module when it holds a second responsibility, not because it is long. Over 200 lines is a review question, not a limit.
 - Keep a helper beside its only caller; move it out when a second module needs it.
-- Keep logic pure. I/O (HTTP, SQLite, files, `process.env`, `console`) stays in `main.ts` and the server or client modules.
+- Keep logic pure. I/O (files, child processes, `process.env`, `process.exit`, `console`) stays in the `bin/` entry points.
 - Pass side effects in as dependencies: `now: () => number`, `fetch`, `setTimeout`/`sleep`, `log`. Only `main.ts` wires the real ones.
 - Validate untrusted input at the edge: request bodies, config files, env, and JSON from another service. Inside, use the parsed type.
 - Name a function by its effect (`postResult`, `applyResult`); a pure query reads as a noun or question (`quorumStatus`, `isStale`).
 - Booleans start with `is`, `has`, or `can`. Files are kebab-case.
+
+## Code conventions
+
+The pulse [code conventions](https://github.com/lorenzh/pulse-meta/blob/main/docs/code-conventions.md) apply to every change and to the shared configs this repository ships. Search the shared files, `bin/` and the existing tests before adding a rule, script or test setup, and move the second copy of a pattern into a shared file or helper. Keep script logic in small pure functions; file and process I/O stays in the `bin/` entry points.
 
 ## Errors
 
